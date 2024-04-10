@@ -632,7 +632,7 @@ void residual_backward(float *dinp1, float *dinp2, float *dout, int N)
  * @param probs 输出数组，存储归一化后的概率，尺寸为(B,T,V)
  * @param logits 输入数组，存储未归一化对数概率，尺寸为(B,T,V)
  * @param B 批量大小
- * @param T 时间步数（或序列长度）
+ * @param T token数（或序列长度）
  * @param V 词汇量（或类别数）
  */
 void softmax_forward(float *probs, float *logits, int B, int T, int V)
@@ -643,7 +643,7 @@ void softmax_forward(float *probs, float *logits, int B, int T, int V)
     {
         for (int t = 0; t < T; t++)
         {
-            // 计算当前时间步和批次的logits和probs起始位置
+            // 计算当前token和批次的logits和probs起始位置
             float *logits_bt = logits + b * T * V + t * V;
             float *probs_bt = probs + b * T * V + t * V;
 
@@ -680,13 +680,13 @@ void softmax_forward(float *probs, float *logits, int B, int T, int V)
  * 计算交叉熵损失的前向传播
  *
  * @param losses 用于存储每个位置的损失值的浮点数组，尺寸为(B,T)
- * @param probs 包含概率值的浮点数组，尺寸为(B,T,V)，其中B为批次大小，T为时间步数或序列长度，V为词汇表大小（类数）
+ * @param probs 包含概率值的浮点数组，尺寸为(B,T,V)，其中B为批次大小，T为token数或序列长度，V为词汇表大小（类数）
  * @param targets 包含目标标签的整数数组，尺寸为(B,T)，其中每个元素指示正确标签在logits中的索引
  * @param B 批次大小
- * @param T 时间步数或序列长度
+ * @param T token数或序列长度
  * @param V 词汇表大小（类数）
  *
- * 该函数遍历每个样本和时间步，计算对应位置的概率与目标标签的交叉熵损失。
+ * 该函数遍历每个样本和token，计算对应位置的概率与目标标签的交叉熵损失。
  */
 void crossentropy_forward(float *losses,
                           float *probs, int *targets,
@@ -695,12 +695,12 @@ void crossentropy_forward(float *losses,
     // 遍历批次中的每个样本
     for (int b = 0; b < B; b++)
     {
-        // 遍历样本中每个时间步
+        // 遍历样本中每个token
         for (int t = 0; t < T; t++)
         {
             // 计算损失：针对每个位置的目标标签，计算其对应概率的负对数
-            float *probs_bt = probs + b * T * V + t * V; // 获取当前样本和时间步的概率数组指针
-            int ix = targets[b * T + t];                 // 获取当前样本和时间步的目标标签索引
+            float *probs_bt = probs + b * T * V + t * V; // 获取当前样本和token的概率数组指针
+            int ix = targets[b * T + t];                 // 获取当前样本和token的目标标签索引
             losses[b * T + t] = -logf(probs_bt[ix]);     // 计算并存储损失值
         }
     }
@@ -714,22 +714,22 @@ void crossentropy_forward(float *losses,
  * @param probs 指向存储softmax概率的数组的指针。
  * @param targets 指向存储目标标签的整型数组的指针。
  * @param B 批量大小。
- * @param T 时间步（或序列长度）。
+ * @param T token（或序列长度）。
  * @param V 候选类别数量。
  */
 void crossentropy_softmax_backward(float *dlogits,
                                    float *dlosses, float *probs, int *targets,
                                    int B, int T, int V)
 {
-    // 针对每个样本和时间步进行反向传播
+    // 针对每个样本和token进行反向传播
     for (int b = 0; b < B; b++)
     {
         for (int t = 0; t < T; t++)
         {
             float *dlogits_bt = dlogits + b * T * V + t * V; // 计算当前位置的梯度指针
             float *probs_bt = probs + b * T * V + t * V;     // 计算当前位置的概率指针
-            float dloss = dlosses[b * T + t];                // 获取当前样本和时间步的损失梯度
-            int ix = targets[b * T + t];                     // 获取当前样本和时间步的目标标签
+            float dloss = dlosses[b * T + t];                // 获取当前样本和token的损失梯度
+            int ix = targets[b * T + t];                     // 获取当前样本和token的目标标签
             // 针对所有类别进行反向传播
             for (int i = 0; i < V; i++)
             {
@@ -1477,7 +1477,7 @@ void dataloader_reset(DataLoader *loader)
 void dataloader_next_batch(DataLoader *loader)
 {
     int B = loader->B; // 批次大小
-    int T = loader->T; // 时间步长
+    int T = loader->T; // token长
 
     // 检查是否到达文件末尾，如果是，则回到文件起始位置
     if (loader->current_position + (B * T + 1) * sizeof(int) > loader->file_size)
